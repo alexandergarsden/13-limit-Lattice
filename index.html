@@ -317,12 +317,23 @@
     const NODE_RADIUS = 20 * (2 / 3); const LABEL_Y_OFFSET = 25;
     const OCTAVE_MULTIPLIERS = [4, 2, 1, 0.5, 0.25];
     const OCTAVE_SELECTOR_X_OFFSET = 24; const OCTAVE_SELECTOR_Y_STEP = 10 * (2 / 3); const OCTAVE_SELECTOR_RADIUS = 2;
+    
+    // **UPDATED**: Using your new vector geometry
     const P_VECTORS = (() => {
-        const rad=(d)=>d*Math.PI/180; const p=[7,11,13,17,19,23,29,31]; const lM=Math.log(p[0]); const lX=Math.log(p[p.length-1]);
-        const r={}; p.forEach(p=>{r[p]=0.4+(Math.log(p)-lM)/(lX-lM)*0.6;}); r[7]=0.60;
-        const v={ 7:{r:r[7],a:10}, 13:{r:r[13],a:17}, 19:{r:r[19],a:26}, 29:{r:r[29],a:35}, 11:{r:r[11],a:71}, 17:{r:r[17],a:63}, 23:{r:r[23],a:55}, 31:{r:r[31],a:82} };
-        const fV={3:{x:1,y:0},5:{x:0,y:1}}; for(const p in v){ const{r:R,a:A}=v[p]; fV[p]={x:R*Math.cos(rad(A)),y:R*Math.sin(rad(A))};}
-        return fV;
+        const rad = (deg) => deg * Math.PI / 180;
+        const vectors = {
+            7:  { r: 0.64, a: 20 }, 11: { r: 0.64, a: 70 },
+            13: { r: 0.70, a: 40 }, 17: { r: 0.17, a: 50 },
+            19: { r: 0.33, a: 30 }, 23: { r: 0.33, a: 60 },
+            29: { r: 0.25, a: 10 }, 31: { r: 0.25, a: 80 }
+        };
+        
+        const finalVectors = { 3: { x: 1, y: 0 }, 5: { x: 0, y: 1 } };
+        for(const p in vectors) {
+            const { r, a } = vectors[p];
+            finalVectors[p] = { x: r * Math.cos(rad(a)), y: r * Math.sin(rad(a)) };
+        }
+        return finalVectors;
     })();
 
     /* 4. NODE GENERATION */
