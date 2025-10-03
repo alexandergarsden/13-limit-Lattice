@@ -278,22 +278,28 @@
         const o=parseInt(oS); const c=parseInt(cS); let pI=PITCH_NAMES.indexOf(n.toUpperCase()); if(pI===-1)return null;
         const tI=(o*12)+pI-48; const eF=C4_FREQ*Math.pow(2,tI/12); return eF*Math.pow(2,c/1200);
     }
+    
+    // **DEFINITIVE FIX**: Visibility logic now correctly checks generation mode AND filters.
     function shouldNodeBeVisible(node) {
         if (node.octaveStates.some(osc => osc !== null)) {
             return true;
         }
+
         const generationMode = document.getElementById('parent-limit-select').value;
         const non2PrimesWithMultiplicity = node.non2Primes_withMultiplicity;
+
         if (generationMode === '5-limit') {
             const highPrimesCount = non2PrimesWithMultiplicity.filter(p => p > 5).length;
             if (highPrimesCount > 1) {
                 return false; 
             }
         }
+        
         const uniqueNon2Primes = node.primes.filter(p => p > 2);
         if (fractionLabel(node.ratio[0], node.ratio[1]) === '1/1') return true; 
         return uniqueNon2Primes.every(p => activePrimes.has(p));
     }
+
     function getMaxPrime(node) { return node.primes.filter(p => p > 2).reduce((max, p) => Math.max(max, p), 1); }
     function getHighestPrimeLimit(node) {
         if (fractionLabel(node.ratio[0],node.ratio[1])==='1/1') return 1; const mP=node.primes.filter(p=>p>2).reduce((m,p)=>Math.max(m,p),3);
@@ -316,21 +322,11 @@
     const OCTAVE_MULTIPLIERS = [4, 2, 1, 0.5, 0.25];
     const OCTAVE_SELECTOR_X_OFFSET = 24; const OCTAVE_SELECTOR_Y_STEP = 10 * (2 / 3); const OCTAVE_SELECTOR_RADIUS = 2;
     const P_VECTORS = (() => {
-        // Cartesian coordinates, hand-tuned to prevent overlaps.
-        return {
-            3:  { x: 1.000, y: 0.000 },
-            5:  { x: 0.000, y: 1.000 },
-            // Lower Cluster
-            7:  { x: 0.591, y: 0.104 },
-            13: { x: 0.622, y: 0.190 },
-            19: { x: 0.721, y: 0.352 },
-            29: { x: 0.700, y: 0.650 }, // Retuned
-            // Upper Cluster
-            11: { x: 0.190, y: 0.550 },
-            17: { x: 0.344, y: 0.675 },
-            23: { x: 0.480, y: 0.720 },
-            31: { x: 0.139, y: 0.950 }
-        };
+        const rad=(d)=>d*Math.PI/180; const p=[7,11,13,17,19,23,29,31]; const lM=Math.log(p[0]); const lX=Math.log(p[p.length-1]);
+        const r={}; p.forEach(p=>{r[p]=0.4+(Math.log(p)-lM)/(lX-lM)*0.6;}); r[7]=0.60;
+        const v={ 7:{r:r[7],a:10}, 13:{r:r[13],a:17}, 19:{r:r[19],a:26}, 29:{r:r[29],a:35}, 11:{r:r[11],a:71}, 17:{r:r[17],a:63}, 23:{r:r[23],a:55}, 31:{r:r[31],a:82} };
+        const fV={3:{x:1,y:0},5:{x:0,y:1}}; for(const p in v){ const{r:R,a:A}=v[p]; fV[p]={x:R*Math.cos(rad(A)),y:R*Math.sin(rad(A))};}
+        return fV;
     })();
 
     /* 4. NODE GENERATION */
@@ -346,7 +342,9 @@
         });
 
         const createNode = (ratio, x, y) => {
-            const key = ratioKey(ratio); if (newRatios.has(key)) return;
+            const key = ratioKey(ratio); 
+            if (newRatios.has(key)) return newRatios.get(key);
+            
             const newNode = { 
                 ratio, x, y, 
                 primes: ratioPrimeFactors(ratio),
@@ -356,15 +354,18 @@
             };
             newNodes.push(newNode); newRatios.set(key, newNode); return newNode;
         };
+        
+        const baseGridSnapshot = [];
         for (let c3=latticeRange.x[0]; c3<=latticeRange.x[1]; c3++) {
             for (let c5=latticeRange.y[0]; c5<=latticeRange.y[1]; c5++) {
                 const n3=c3>0?3**c3:1; const d3=c3<0?3**(-c3):1; const n5=c5>0?5**c5:1; const d5=c5<0?5**(-c5):1;
                 const r=normalizeOctave(n3*n5,d3*d5);
                 const x=centerX+(c3*P_VECTORS[3].x*spacing)+(c5*P_VECTORS[5].x*spacing);
                 const y=centerY-((c3*P_VECTORS[3].y*spacing)+(c5*P_VECTORS[5].y*spacing));
-                createNode(r,x,y);
+                baseGridSnapshot.push(createNode(r,x,y));
             }
         }
+        
         const expand = (base, prime) => {
             const v=P_VECTORS[prime]; const created=[];
             base.forEach(pN => {
@@ -375,11 +376,12 @@
             });
             return created;
         };
-        const hP=[7,11,13,17,19,23,29,31]; 
-        const baseGridSnapshot = newNodes.filter(n => !nodesToPreserve.includes(n) && n.primes.every(p => p <= 5));
+
+        const higherPrimes=[7,11,13,17,19,23,29,31]; 
         
-        if(generationMode==='5-limit'){hP.forEach(p=>{expand(baseGridSnapshot,p);});}
-        else{ const fOS=[]; hP.forEach(p=>{fOS.push(...expand(baseGridSnapshot,p));}); hP.forEach(p=>{expand(fOS,p);}); }
+        if(generationMode==='5-limit'){higherPrimes.forEach(p=>{expand(baseGridSnapshot,p);});}
+        else{ const fOS=[]; higherPrimes.forEach(p=>{fOS.push(...expand(baseGridSnapshot,p));}); higherPrimes.forEach(p=>{expand(fOS,p);}); }
+        
         newNodes.sort((a,b)=>b.simplicityScore-a.simplicityScore);
         return {nodes:newNodes, existingRatios:newRatios};
     }
