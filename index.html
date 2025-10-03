@@ -173,13 +173,17 @@
         </select>
         <label for="volume">Volume (Gain): <span id="volume-val">0.05</span></label>
         <input type="range" id="volume" min="0" max="0.5" step="0.01" value="0.05">
-        <label for="filter-freq">Filter Frequency (Hz): <span id="filter-freq-val">5000</span></label>
+        <label for="attack">Attack: <span id="attack-val">0.50</span>s</label>
+        <input type="range" id="attack" min="0.01" max="2.0" step="0.01" value="0.50">
+        <label for="decay">Release: <span id="decay-val">1.00</span>s</label>
+        <input type="range" id="decay" min="0.01" max="4.0" step="0.01" value="1.00">
+        <label for="filter-freq">Low-Pass Cutoff (Hz): <span id="filter-freq-val">5000</span></label>
         <input type="range" id="filter-freq" min="100" max="20000" step="10" value="5000">
-        <label for="filter-q">Filter Rolloff (Q): <span id="filter-q-val">1.0</span></label>
+        <label for="filter-q">Resonance (Q): <span id="filter-q-val">1.0</span></label>
         <input type="range" id="filter-q" min="0.1" max="10" step="0.1" value="1.0">
         <button onclick="deactivateAll()">Stop All Sound</button>
     </div>
-
+    
     <div class="control-group">
         <h2>Pitch Display & Fundamental</h2>
         <label>Pitch Display:</label>
@@ -252,6 +256,8 @@
     
     let fundamental = 440;
     let waveform = 'sine';
+    let attackTime = 0.5;
+    let releaseTime = 1.0;
     const activePrimes = new Set([3, 5, 7]); 
     let displayMode = 'hz'; 
     let zoomLevel = 0.7;
@@ -278,28 +284,18 @@
         const o=parseInt(oS); const c=parseInt(cS); let pI=PITCH_NAMES.indexOf(n.toUpperCase()); if(pI===-1)return null;
         const tI=(o*12)+pI-48; const eF=C4_FREQ*Math.pow(2,tI/12); return eF*Math.pow(2,c/1200);
     }
-    
-    // **DEFINITIVE FIX**: Visibility logic now correctly checks generation mode AND filters.
     function shouldNodeBeVisible(node) {
-        if (node.octaveStates.some(osc => osc !== null)) {
-            return true;
-        }
-
+        if (node.octaveStates.some(o => o !== null)) return true;
         const generationMode = document.getElementById('parent-limit-select').value;
         const non2PrimesWithMultiplicity = node.non2Primes_withMultiplicity;
-
         if (generationMode === '5-limit') {
             const highPrimesCount = non2PrimesWithMultiplicity.filter(p => p > 5).length;
-            if (highPrimesCount > 1) {
-                return false; 
-            }
+            if (highPrimesCount > 1) return false; 
         }
-        
         const uniqueNon2Primes = node.primes.filter(p => p > 2);
         if (fractionLabel(node.ratio[0], node.ratio[1]) === '1/1') return true; 
         return uniqueNon2Primes.every(p => activePrimes.has(p));
     }
-
     function getMaxPrime(node) { return node.primes.filter(p => p > 2).reduce((max, p) => Math.max(max, p), 1); }
     function getHighestPrimeLimit(node) {
         if (fractionLabel(node.ratio[0],node.ratio[1])==='1/1') return 1; const mP=node.primes.filter(p=>p>2).reduce((m,p)=>Math.max(m,p),3);
@@ -335,26 +331,12 @@
 
     function generateLatticeNodes(generationMode = 'all', nodesToPreserve = []) {
         const newNodes = []; const newRatios = new Map(); const ratioKey = r => r.join(',');
-
-        nodesToPreserve.forEach(node => {
-            const key = ratioKey(node.ratio);
-            if (!newRatios.has(key)) { newNodes.push(node); newRatios.set(key, node); }
-        });
-
+        nodesToPreserve.forEach(node => { const key = ratioKey(node.ratio); if (!newRatios.has(key)) { newNodes.push(node); newRatios.set(key, node); }});
         const createNode = (ratio, x, y) => {
-            const key = ratioKey(ratio); 
-            if (newRatios.has(key)) return newRatios.get(key);
-            
-            const newNode = { 
-                ratio, x, y, 
-                primes: ratioPrimeFactors(ratio),
-                non2Primes_withMultiplicity: getRatioPrimeFactorsWithMultiplicity(ratio),
-                simplicityScore: ratio[0]*ratio[1], 
-                octaveStates: new Array(5).fill(null)
-            };
+            const key = ratioKey(ratio); if (newRatios.has(key)) return newRatios.get(key);
+            const newNode = { ratio, x, y, primes: ratioPrimeFactors(ratio), non2Primes_withMultiplicity: getRatioPrimeFactorsWithMultiplicity(ratio), simplicityScore: ratio[0]*ratio[1], octaveStates: new Array(5).fill(null) };
             newNodes.push(newNode); newRatios.set(key, newNode); return newNode;
         };
-        
         const baseGridSnapshot = [];
         for (let c3=latticeRange.x[0]; c3<=latticeRange.x[1]; c3++) {
             for (let c5=latticeRange.y[0]; c5<=latticeRange.y[1]; c5++) {
@@ -365,7 +347,6 @@
                 baseGridSnapshot.push(createNode(r,x,y));
             }
         }
-        
         const expand = (base, prime) => {
             const v=P_VECTORS[prime]; const created=[];
             base.forEach(pN => {
@@ -376,12 +357,9 @@
             });
             return created;
         };
-
-        const higherPrimes=[7,11,13,17,19,23,29,31]; 
-        
-        if(generationMode==='5-limit'){higherPrimes.forEach(p=>{expand(baseGridSnapshot,p);});}
-        else{ const fOS=[]; higherPrimes.forEach(p=>{fOS.push(...expand(baseGridSnapshot,p));}); higherPrimes.forEach(p=>{expand(fOS,p);}); }
-        
+        const hP=[7,11,13,17,19,23,29,31]; 
+        if(generationMode==='5-limit'){hP.forEach(p=>{expand(baseGridSnapshot,p);});}
+        else{ const fOS=[]; hP.forEach(p=>{fOS.push(...expand(baseGridSnapshot,p));}); hP.forEach(p=>{expand(fOS,p);}); }
         newNodes.sort((a,b)=>b.simplicityScore-a.simplicityScore);
         return {nodes:newNodes, existingRatios:newRatios};
     }
@@ -429,10 +407,41 @@
     }
 
     /* --- AUDIO & STATE LOGIC --- */
-    function toggleOctave(nD,oI){if(!nD)return;const bF=fundamental*(nD.ratio[0]/nD.ratio[1]);const tF=bF*OCTAVE_MULTIPLIERS[oI];
-    if(nD.octaveStates[oI]===null){const o=audioCtx.createOscillator();o.connect(lowPassFilter);o.type=waveform;o.frequency.setValueAtTime(tF,audioCtx.currentTime);o.start();nD.octaveStates[oI]=o;}
-    else{nD.octaveStates[oI].stop();nD.octaveStates[oI]=null;}drawLattice();}
-    function deactivateAllOctaves(nD){if(!nD)return;let ch=false;nD.octaveStates.forEach((o,i)=>{if(o!==null){o.stop();nD.octaveStates[i]=null;ch=true;}});if(ch)drawLattice();}
+    function deactivateOctave(nD, oI) {
+        if (nD && nD.octaveStates && nD.octaveStates[oI]) {
+            const { source, env } = nD.octaveStates[oI];
+            const now = audioCtx.currentTime;
+            env.gain.cancelScheduledValues(now);
+            env.gain.setValueAtTime(env.gain.value, now);
+            env.gain.linearRampToValueAtTime(0, now + releaseTime);
+            source.stop(now + releaseTime + 0.1);
+            nD.octaveStates[oI] = null;
+        }
+    }
+    
+    function toggleOctave(nD,oI){
+        if(!nD) return;
+        if(nD.octaveStates[oI] !== null) {
+            deactivateAllOctaves(nD);
+            return;
+        }
+        const now = audioCtx.currentTime;
+        const baseFreq = fundamental * (nD.ratio[0] / nD.ratio[1]);
+        const targetFreq = baseFreq * OCTAVE_MULTIPLIERS[oI];
+        const env = audioCtx.createGain();
+        env.connect(lowPassFilter);
+        env.gain.setValueAtTime(0, now);
+        env.gain.linearRampToValueAtTime(1, now + attackTime);
+        const source = audioCtx.createOscillator();
+        source.type = waveform;
+        source.frequency.setValueAtTime(targetFreq, now);
+        source.connect(env);
+        source.start(now);
+        nD.octaveStates[oI] = { source, env };
+        drawLattice();
+    }
+    
+    function deactivateAllOctaves(nD){if(!nD)return;let ch=false;nD.octaveStates.forEach((o,i)=>{if(o!==null){deactivateOctave(nD,i);ch=true;}});if(ch)drawLattice();}
     window.deactivateAll=function(){nodes.forEach(f=>deactivateAllOctaves(f));}
 
     /* --- EVENT HANDLERS --- */
@@ -442,11 +451,14 @@
     for(let i=vN.length-1;i>=0;i--){const n=vN[i];if(Math.pow(worldX-n.x,2)+Math.pow(worldY-n.y,2)<NODE_RADIUS*NODE_RADIUS){iH=true;break;}
     for(let j=0;j<OCTAVE_MULTIPLIERS.length;j++){const sX=n.x+OCTAVE_SELECTOR_X_OFFSET;const sY=n.y-(2*OCTAVE_SELECTOR_Y_STEP)+(j*OCTAVE_SELECTOR_Y_STEP);if(Math.pow(worldX-sX,2)+Math.pow(worldY-sY,2)<(OCTAVE_SELECTOR_RADIUS+3)*(OCTAVE_SELECTOR_RADIUS+3)){iH=true;break;}}if(iH)break;}canvas.style.cursor=iH?'pointer':'default';});
     canvas.addEventListener('click',(e)=>{const{worldX,worldY}=getMouseWorldPos(e);const vN=nodes.filter(shouldNodeBeVisible);const nTC=[...vN].reverse();
-    for(const n of nTC){if(Math.pow(worldX-n.x,2)+Math.pow(worldY-n.y,2)<NODE_RADIUS*NODE_RADIUS){const iP=n.octaveStates.some(o=>o!==null);if(iP){deactivateAllOctaves(n);}else{toggleOctave(n,2);}return;}
+    for(const n of nTC){if(Math.pow(worldX-n.x,2)+Math.pow(worldY-n.y,2)<NODE_RADIUS*NODE_RADIUS){toggleOctave(n,2);return;}
     for(let j=0;j<OCTAVE_MULTIPLIERS.length;j++){const sX=n.x+OCTAVE_SELECTOR_X_OFFSET;const sY=n.y-(2*OCTAVE_SELECTOR_Y_STEP)+(j*OCTAVE_SELECTOR_Y_STEP);if(Math.pow(worldX-sX,2)+Math.pow(worldY-sY,2)<(OCTAVE_SELECTOR_RADIUS+3)*(OCTAVE_SELECTOR_RADIUS+3)){toggleOctave(n,j);return;}}}});
     canvas.addEventListener('wheel',(e)=>{e.preventDefault();pan.x-=e.deltaX;pan.y-=e.deltaY;drawLattice();});
+    
     document.getElementById('zoom-slider').addEventListener('input',(e)=>{zoomLevel=parseFloat(e.target.value);document.getElementById('zoom-val').textContent=zoomLevel.toFixed(2);drawLattice();});
-    document.getElementById('waveform').addEventListener('change',(e)=>{waveform=e.target.value;nodes.forEach(f=>{const aI=f.octaveStates.map((o,i)=>o!==null?i:-1).filter(i=>i!==-1);if(aI.length>0){deactivateAllOctaves(f);aI.forEach(idx=>toggleOctave(f,idx));}});});
+    document.getElementById('waveform').addEventListener('change',(e)=>{waveform=e.target.value;});
+    document.getElementById('attack').addEventListener('input',(e)=>{attackTime=parseFloat(e.target.value);document.getElementById('attack-val').textContent=attackTime.toFixed(2);});
+    document.getElementById('decay').addEventListener('input',(e)=>{releaseTime=parseFloat(e.target.value);document.getElementById('decay-val').textContent=releaseTime.toFixed(2);});
     document.getElementById('volume').addEventListener('input',(e)=>{const v=parseFloat(e.target.value);masterGain.gain.setValueAtTime(v,audioCtx.currentTime);document.getElementById('volume-val').textContent=v.toFixed(2);});
     document.getElementById('filter-freq').addEventListener('input',(e)=>{const v=parseFloat(e.target.value);lowPassFilter.frequency.setValueAtTime(v,audioCtx.currentTime);document.getElementById('filter-freq-val').textContent=v.toFixed(0);});
     document.getElementById('filter-q').addEventListener('input',(e)=>{const v=parseFloat(e.target.value);lowPassFilter.Q.setValueAtTime(v,audioCtx.currentTime);document.getElementById('filter-q-val').textContent=v.toFixed(1);});
