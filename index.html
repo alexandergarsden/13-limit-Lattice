@@ -147,7 +147,7 @@
   
   <div id="header">
     <h1>Just intonation pitch lattice (Primes up to 31)</h1>
-    <p>Click a node (or the octave selectors to the right of each node) to play pitches. All nodes default to within one octave above the fundamental. Use the control panel to change the sound, how pitches are displayed, and to control which primes are displayed. Copyright &copy; Alexander Garsden 2025.</p>
+    <p>Click a node (or the octave selectors to the right of each node) to play pitches. All nodes default to within one octave above the fundamental. Use the control panel to control the sound, how pitches are displayed, which primes are displayed, and to locate specific intervals. Copyright © Alexander Garsden 2025.</p>
   </div>
 
   <div id="container">
@@ -239,6 +239,18 @@
         </div>
     </div>
 
+    <div class="control-group">
+        <h2>Locate Interval</h2>
+        <p>Find all pairs of visible nodes matching a pitch class interval.</p>
+        <div id="locate-interval-container" style="display: flex; align-items: center; gap: 5px; margin-top: 10px;">
+            <input type="text" id="interval-num1" placeholder="e.g. 3" size="5" style="text-align: center; font-weight: 300;">
+            <span style="font-weight: bold; color: #555;">:</span>
+            <input type="text" id="interval-num2" placeholder="e.g. 2" size="5" style="text-align: center; font-weight: 300;">
+            <button id="locate-interval-btn" style="margin-left: 10px; margin-top: 0;">Find</button>
+            <button id="clear-interval-btn" style="margin-top: 0;">Clear</button>
+        </div>
+    </div>
+
   </div>
 
   <script>
@@ -265,6 +277,7 @@
     
     let hoveredNode = null;
     let hoveredOctave = { node: null, octaveIndex: -1 };
+    let highlightedIntervals = [];
 
     /* 2. UTILITY FUNCTIONS */
     function gcd(a,b){ return b===0?a:gcd(b,a%b); }
@@ -311,6 +324,18 @@
       const k2=Math.round(Math.log2((1/factor)/r)); if(Math.abs(r*Math.pow(2,k2)-(1/factor))<eps) return true;
       return false;
     }
+    function normalizeIntervalRatio(n, d) {
+        if (n === 0 || d === 0) return [0, 0];
+        let num = Math.abs(n);
+        let den = Math.abs(d);
+        while (num > 0 && num % 2 === 0) num /= 2;
+        while (den > 0 && den % 2 === 0) den /= 2;
+        const commonDivisor = gcd(num, den);
+        num /= commonDivisor;
+        den /= commonDivisor;
+        return num < den ? [num, den] : [den, num];
+    }
+
 
     /* 3. LATTICE PARAMETERS & DATA */
     const latticeRange = { x: [-4, 4], y: [-2, 2] }; 
@@ -318,8 +343,7 @@
     const WORLD_WIDTH = 4000; const WORLD_HEIGHT = 2600; 
     const spacing = 480; const centerX = WORLD_WIDTH / 2; const centerY = WORLD_HEIGHT / 2;
     const NODE_RADIUS = 20 * (2 / 3); const LABEL_Y_OFFSET = 25;
-    // **TWEAK 1**: Reordered multipliers to be ascending, to match labels
-    const OCTAVE_MULTIPLIERS = [4, 2, 1, 0.5, 0.125];
+    const OCTAVE_MULTIPLIERS = [4, 2, 1, 0.5, 0.25];
     const OCTAVE_SELECTOR_X_OFFSET = 24; const OCTAVE_SELECTOR_Y_STEP = 10 * (2 / 3); const OCTAVE_SELECTOR_RADIUS = 2;
     
     const P_VECTORS = (() => {
@@ -448,7 +472,6 @@
                     if (fT === '1/1') {
                         labelText = 'Primes = 1';
                     } else {
-                        // **TWEAK 2**: Added Set to remove duplicate factors
                         const factors = [...new Set(n.non2Primes_withMultiplicity)].sort((a, b) => a - b);
                         labelText = 'Primes = ' + (factors.length > 0 ? factors.join(', ') : 'None');
                     }
@@ -458,6 +481,50 @@
                 }
                 ctx.fillText(labelText, n.x, n.y + LABEL_Y_OFFSET);
             }
+
+            if (highlightedIntervals.length > 0) {
+                ctx.save();
+                ctx.strokeStyle = 'red';
+                ctx.lineWidth = 3;
+                ctx.globalAlpha = 0.85;
+                highlightedIntervals.forEach(pair => {
+                    const [nodeA, nodeB] = pair;
+                    const ax = nodeA.x, ay = nodeA.y;
+                    const bx = nodeB.x, by = nodeB.y;
+
+                    const HIGHLIGHT_CIRCLE_RADIUS = NODE_RADIUS + 3;
+                    const vecX = bx - ax;
+                    const vecY = by - ay;
+                    const dist = Math.sqrt(vecX * vecX + vecY * vecY);
+
+                    if (dist === 0) return;
+
+                    const unitX = vecX / dist;
+                    const unitY = vecY / dist;
+
+                    const startX = ax + unitX * HIGHLIGHT_CIRCLE_RADIUS;
+                    const startY = ay + unitY * HIGHLIGHT_CIRCLE_RADIUS;
+                    const endX = bx - unitX * HIGHLIGHT_CIRCLE_RADIUS;
+                    const endY = by - unitY * HIGHLIGHT_CIRCLE_RADIUS;
+                    
+                    if (dist > 2 * HIGHLIGHT_CIRCLE_RADIUS) {
+                        ctx.beginPath();
+                        ctx.moveTo(startX, startY);
+                        ctx.lineTo(endX, endY);
+                        ctx.stroke();
+                    }
+
+                    ctx.beginPath();
+                    ctx.arc(ax, ay, HIGHLIGHT_CIRCLE_RADIUS, 0, 2 * Math.PI);
+                    ctx.stroke();
+
+                    ctx.beginPath();
+                    ctx.arc(bx, by, HIGHLIGHT_CIRCLE_RADIUS, 0, 2 * Math.PI);
+                    ctx.stroke();
+                });
+                ctx.restore(); 
+            }
+
             ctx.restore();
         });
     }
@@ -477,7 +544,6 @@
     
     function toggleOctave(nD,oI){
         if(!nD) return;
-        // The default octave index is 2 (middle button, 1x multiplier)
         const octaveIndex = (oI === undefined) ? 2 : oI;
 
         if(nD.octaveStates[octaveIndex] !== null) {
@@ -575,6 +641,45 @@
         const newData = generateLatticeNodes(newMode, activeNodesToPreserve);
         nodes = newData.nodes;
         existingRatios = newData.existingRatios;
+        drawLattice();
+    });
+
+    document.getElementById('locate-interval-btn').addEventListener('click', () => {
+        const num1 = parseInt(document.getElementById('interval-num1').value);
+        const num2 = parseInt(document.getElementById('interval-num2').value);
+
+        if (isNaN(num1) || isNaN(num2) || num1 <= 0 || num2 <= 0) {
+            alert('Please enter valid positive integers for the ratio.');
+            highlightedIntervals = [];
+            drawLattice();
+            return;
+        }
+
+        const targetInterval = normalizeIntervalRatio(num1, num2);
+        highlightedIntervals = [];
+        const visibleNodes = nodes.filter(shouldNodeBeVisible);
+
+        for (let i = 0; i < visibleNodes.length; i++) {
+            for (let j = i + 1; j < visibleNodes.length; j++) {
+                const nodeA = visibleNodes[i];
+                const nodeB = visibleNodes[j];
+
+                const intervalNum = nodeA.ratio[0] * nodeB.ratio[1];
+                const intervalDen = nodeA.ratio[1] * nodeB.ratio[0];
+                const nodeInterval = normalizeIntervalRatio(intervalNum, intervalDen);
+
+                if (nodeInterval[0] === targetInterval[0] && nodeInterval[1] === targetInterval[1]) {
+                    highlightedIntervals.push([nodeA, nodeB]);
+                }
+            }
+        }
+        drawLattice();
+    });
+
+    document.getElementById('clear-interval-btn').addEventListener('click', () => {
+        highlightedIntervals = [];
+        document.getElementById('interval-num1').value = '';
+        document.getElementById('interval-num2').value = '';
         drawLattice();
     });
 
