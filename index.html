@@ -262,6 +262,9 @@
     let displayMode = 'hz'; 
     let zoomLevel = 0.7;
     let pan = { x: 0, y: 0 };
+    
+    let hoveredNode = null;
+    let hoveredOctave = { node: null, octaveIndex: -1 };
 
     /* 2. UTILITY FUNCTIONS */
     function gcd(a,b){ return b===0?a:gcd(b,a%b); }
@@ -315,10 +318,10 @@
     const WORLD_WIDTH = 4000; const WORLD_HEIGHT = 2600; 
     const spacing = 480; const centerX = WORLD_WIDTH / 2; const centerY = WORLD_HEIGHT / 2;
     const NODE_RADIUS = 20 * (2 / 3); const LABEL_Y_OFFSET = 25;
-    const OCTAVE_MULTIPLIERS = [4, 2, 1, 0.5, 0.25];
+    // **TWEAK 1**: Reordered multipliers to be ascending, to match labels
+    const OCTAVE_MULTIPLIERS = [4, 2, 1, 0.5, 0.125];
     const OCTAVE_SELECTOR_X_OFFSET = 24; const OCTAVE_SELECTOR_Y_STEP = 10 * (2 / 3); const OCTAVE_SELECTOR_RADIUS = 2;
     
-    // **UPDATED**: Using your new vector geometry
     const P_VECTORS = (() => {
         const rad = (deg) => deg * Math.PI / 180;
         const vectors = {
@@ -408,11 +411,53 @@
                 ctx.font=`${fS}px "Helvetica Neue"`; let tW=ctx.measureText(fT).width;
                 while(tW>aW&&fS>4){fS--; ctx.font=`${fS}px "Helvetica Neue"`; tW=ctx.measureText(fT).width;}
                 ctx.fillStyle='white'; ctx.textAlign='center'; ctx.textBaseline='middle'; ctx.fillText(fT,n.x,n.y);
-                OCTAVE_MULTIPLIERS.forEach((_,idx)=>{const y=n.y-(2*OCTAVE_SELECTOR_Y_STEP)+(idx*OCTAVE_SELECTOR_Y_STEP);
-                ctx.beginPath(); ctx.arc(n.x+OCTAVE_SELECTOR_X_OFFSET,y,OCTAVE_SELECTOR_RADIUS,0,2*Math.PI);
-                ctx.fillStyle=n.octaveStates[idx]?'#000':'#b3b3b3';ctx.strokeStyle='#999';ctx.lineWidth=1;ctx.fill();ctx.stroke();});
-                const bF=fundamental*(n.ratio[0]/n.ratio[1]); const lT=displayMode==='hz'?`${bF.toFixed(1)}Hz`:freqToPitchName(bF);
-                ctx.fillStyle='#333'; ctx.textAlign='center'; ctx.font='9px "Helvetica Neue"'; ctx.fillText(lT,n.x,n.y+LABEL_Y_OFFSET);}
+                
+                OCTAVE_MULTIPLIERS.forEach((multiplier, idx) => {
+                    const y = n.y - (2 * OCTAVE_SELECTOR_Y_STEP) + (idx * OCTAVE_SELECTOR_Y_STEP);
+                    const x = n.x + OCTAVE_SELECTOR_X_OFFSET;
+                    ctx.beginPath();
+                    ctx.arc(x, y, OCTAVE_SELECTOR_RADIUS, 0, 2 * Math.PI);
+                    ctx.fillStyle = n.octaveStates[idx] ? '#000' : '#b3b3b3';
+                    ctx.strokeStyle = '#999';
+                    ctx.lineWidth = 1;
+                    ctx.fill();
+                    ctx.stroke();
+
+                    if (hoveredOctave.node === n && hoveredOctave.octaveIndex === idx) {
+                        let hoverText = '';
+                        if (displayMode === 'hz') {
+                            const freq = fundamental * (n.ratio[0] / n.ratio[1]) * multiplier;
+                            hoverText = `${freq.toFixed(1)} Hz`;
+                        } else {
+                            const labels = ['+2', '+1', '+0', '-1', '-2'];
+                            hoverText = labels[idx];
+                        }
+                        ctx.fillStyle = '#555';
+                        ctx.font = '8px "Helvetica Neue"';
+                        ctx.textAlign = 'left';
+                        ctx.textBaseline = 'middle';
+                        ctx.fillText(hoverText, x + 5, y);
+                    }
+                });
+
+                ctx.fillStyle = '#333';
+                ctx.textAlign = 'center';
+                ctx.font = '9px "Helvetica Neue"';
+                let labelText;
+                if (hoveredNode === n) {
+                    if (fT === '1/1') {
+                        labelText = 'Primes = 1';
+                    } else {
+                        // **TWEAK 2**: Added Set to remove duplicate factors
+                        const factors = [...new Set(n.non2Primes_withMultiplicity)].sort((a, b) => a - b);
+                        labelText = 'Primes = ' + (factors.length > 0 ? factors.join(', ') : 'None');
+                    }
+                } else {
+                    const baseFreq = fundamental * (n.ratio[0] / n.ratio[1]);
+                    labelText = displayMode === 'hz' ? `${baseFreq.toFixed(1)}Hz` : freqToPitchName(baseFreq);
+                }
+                ctx.fillText(labelText, n.x, n.y + LABEL_Y_OFFSET);
+            }
             ctx.restore();
         });
     }
@@ -432,13 +477,16 @@
     
     function toggleOctave(nD,oI){
         if(!nD) return;
-        if(nD.octaveStates[oI] !== null) {
+        // The default octave index is 2 (middle button, 1x multiplier)
+        const octaveIndex = (oI === undefined) ? 2 : oI;
+
+        if(nD.octaveStates[octaveIndex] !== null) {
             deactivateAllOctaves(nD);
             return;
         }
         const now = audioCtx.currentTime;
         const baseFreq = fundamental * (nD.ratio[0] / nD.ratio[1]);
-        const targetFreq = baseFreq * OCTAVE_MULTIPLIERS[oI];
+        const targetFreq = baseFreq * OCTAVE_MULTIPLIERS[octaveIndex];
         const env = audioCtx.createGain();
         env.connect(lowPassFilter);
         env.gain.setValueAtTime(0, now);
@@ -448,7 +496,7 @@
         source.frequency.setValueAtTime(targetFreq, now);
         source.connect(env);
         source.start(now);
-        nD.octaveStates[oI] = { source, env };
+        nD.octaveStates[octaveIndex] = { source, env };
         drawLattice();
     }
     
@@ -458,12 +506,48 @@
     /* --- EVENT HANDLERS --- */
     function resizeCanvas(){const c=document.getElementById('container');const dpr=window.devicePixelRatio||1;const r=c.getBoundingClientRect();canvas.width=r.width*dpr;canvas.height=r.height*dpr;canvas.style.width=`${r.width}px`;canvas.style.height=`${r.height}px`;drawLattice();}
     function getMouseWorldPos(e){const r=canvas.getBoundingClientRect();const mX=e.clientX-r.left;const mY=e.clientY-r.top;const wX=(mX-r.width/2-pan.x)/zoomLevel+centerX;const wY=(mY-r.height/2-pan.y)/zoomLevel+centerY;return{worldX:wX,worldY:wY};}
-    canvas.addEventListener('mousemove',(e)=>{const{worldX,worldY}=getMouseWorldPos(e);let iH=false;const vN=nodes.filter(shouldNodeBeVisible);
-    for(let i=vN.length-1;i>=0;i--){const n=vN[i];if(Math.pow(worldX-n.x,2)+Math.pow(worldY-n.y,2)<NODE_RADIUS*NODE_RADIUS){iH=true;break;}
-    for(let j=0;j<OCTAVE_MULTIPLIERS.length;j++){const sX=n.x+OCTAVE_SELECTOR_X_OFFSET;const sY=n.y-(2*OCTAVE_SELECTOR_Y_STEP)+(j*OCTAVE_SELECTOR_Y_STEP);if(Math.pow(worldX-sX,2)+Math.pow(worldY-sY,2)<(OCTAVE_SELECTOR_RADIUS+3)*(OCTAVE_SELECTOR_RADIUS+3)){iH=true;break;}}if(iH)break;}canvas.style.cursor=iH?'pointer':'default';});
+    
+    canvas.addEventListener('mousemove', (e) => {
+        const { worldX, worldY } = getMouseWorldPos(e);
+        let newHoveredNode = null;
+        let newHoveredOctave = { node: null, octaveIndex: -1 };
+        let isHovering = false;
+        
+        const visibleNodes = nodes.filter(shouldNodeBeVisible);
+
+        for (let i = visibleNodes.length - 1; i >= 0; i--) {
+            const n = visibleNodes[i];
+            
+            for (let j = 0; j < OCTAVE_MULTIPLIERS.length; j++) {
+                const sX = n.x + OCTAVE_SELECTOR_X_OFFSET;
+                const sY = n.y - (2 * OCTAVE_SELECTOR_Y_STEP) + (j * OCTAVE_SELECTOR_Y_STEP);
+                if (Math.pow(worldX - sX, 2) + Math.pow(worldY - sY, 2) < (OCTAVE_SELECTOR_RADIUS + 4) * (OCTAVE_SELECTOR_RADIUS + 4)) {
+                    newHoveredOctave = { node: n, octaveIndex: j };
+                    isHovering = true;
+                    break;
+                }
+            }
+            if (isHovering) break;
+
+            if (Math.pow(worldX - n.x, 2) + Math.pow(worldY - n.y, 2) < NODE_RADIUS * NODE_RADIUS) {
+                newHoveredNode = n;
+                isHovering = true;
+                break;
+            }
+        }
+
+        canvas.style.cursor = isHovering ? 'pointer' : 'default';
+
+        if (hoveredNode !== newHoveredNode || hoveredOctave.node !== newHoveredOctave.node || hoveredOctave.octaveIndex !== newHoveredOctave.octaveIndex) {
+            hoveredNode = newHoveredNode;
+            hoveredOctave = newHoveredOctave;
+            drawLattice();
+        }
+    });
+
     canvas.addEventListener('click',(e)=>{const{worldX,worldY}=getMouseWorldPos(e);const vN=nodes.filter(shouldNodeBeVisible);const nTC=[...vN].reverse();
     for(const n of nTC){if(Math.pow(worldX-n.x,2)+Math.pow(worldY-n.y,2)<NODE_RADIUS*NODE_RADIUS){toggleOctave(n,2);return;}
-    for(let j=0;j<OCTAVE_MULTIPLIERS.length;j++){const sX=n.x+OCTAVE_SELECTOR_X_OFFSET;const sY=n.y-(2*OCTAVE_SELECTOR_Y_STEP)+(j*OCTAVE_SELECTOR_Y_STEP);if(Math.pow(worldX-sX,2)+Math.pow(worldY-sY,2)<(OCTAVE_SELECTOR_RADIUS+3)*(OCTAVE_SELECTOR_RADIUS+3)){toggleOctave(n,j);return;}}}});
+    for(let j=0;j<OCTAVE_MULTIPLIERS.length;j++){const sX=n.x+OCTAVE_SELECTOR_X_OFFSET;const sY=n.y-(2*OCTAVE_SELECTOR_Y_STEP)+(j*OCTAVE_SELECTOR_Y_STEP);if(Math.pow(worldX-sX,2)+Math.pow(worldY-sY,2)<(OCTAVE_SELECTOR_RADIUS+4)*(OCTAVE_SELECTOR_RADIUS+4)){toggleOctave(n,j);return;}}}});
     canvas.addEventListener('wheel',(e)=>{e.preventDefault();pan.x-=e.deltaX;pan.y-=e.deltaY;drawLattice();});
     
     document.getElementById('zoom-slider').addEventListener('input',(e)=>{zoomLevel=parseFloat(e.target.value);document.getElementById('zoom-val').textContent=zoomLevel.toFixed(2);drawLattice();});
