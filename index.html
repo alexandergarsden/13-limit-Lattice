@@ -237,6 +237,10 @@
                 </div>
             </div>
         </div>
+        <div class="checkbox-group" style="margin-top: 15px;">
+            <label><input type="checkbox" id="show-harmonics" checked> Show harmonics</label>
+            <label><input type="checkbox" id="show-subharmonics" checked> Show subharmonics</label>
+        </div>
     </div>
 
     <div class="control-group">
@@ -274,6 +278,8 @@
     let displayMode = 'hz'; 
     let zoomLevel = 0.7;
     let pan = { x: 0, y: 0 };
+    let showHarmonics = true;
+    let showSubharmonics = true;
     
     let hoveredNode = null;
     let hoveredOctave = { node: null, octaveIndex: -1 };
@@ -301,15 +307,25 @@
         const tI=(o*12)+pI-48; const eF=C4_FREQ*Math.pow(2,tI/12); return eF*Math.pow(2,c/1200);
     }
     function shouldNodeBeVisible(node) {
+        if (fractionLabel(node.ratio[0], node.ratio[1]) === '1/1') return true;
         if (node.octaveStates.some(o => o !== null)) return true;
+
+        // Filter by harmonics/subharmonics
+        const numPrimes = primeFactors(node.ratio[0]).filter(p => p !== 2);
+        const denPrimes = primeFactors(node.ratio[1]).filter(p => p !== 2);
+        
+        if (!showSubharmonics && numPrimes.length > 0) return false; // Hide nodes from multiplying primes
+        if (!showHarmonics && denPrimes.length > 0) return false;  // Hide nodes from dividing primes
+
+        // Filter by generation mode (parent limit)
         const generationMode = document.getElementById('parent-limit-select').value;
-        const non2PrimesWithMultiplicity = node.non2Primes_withMultiplicity;
         if (generationMode === '5-limit') {
-            const highPrimesCount = non2PrimesWithMultiplicity.filter(p => p > 5).length;
-            if (highPrimesCount > 1) return false; 
+            const highPrimesCount = node.non2Primes_withMultiplicity.filter(p => p > 5).length;
+            if (highPrimesCount > 1) return false;
         }
+
+        // Filter by individual prime checkboxes
         const uniqueNon2Primes = node.primes.filter(p => p > 2);
-        if (fractionLabel(node.ratio[0], node.ratio[1]) === '1/1') return true; 
         return uniqueNon2Primes.every(p => activePrimes.has(p));
     }
     function getMaxPrime(node) { return node.primes.filter(p => p > 2).reduce((max, p) => Math.max(max, p), 1); }
@@ -319,10 +335,10 @@
         if(mP>=13)return 13; if(mP>=11)return 11; if(mP>=7)return 7; if(mP>=5)return 5; return 3; 
     }
     function isFactorRelated(a,b,factor){
-      const eps=1e-6; const r=(a.ratio[0]/a.ratio[1])/(b.ratio[0]/b.ratio[1]); 
-      const k1=Math.round(Math.log2(factor/r)); if(Math.abs(r*Math.pow(2,k1)-factor)<eps) return true;
-      const k2=Math.round(Math.log2((1/factor)/r)); if(Math.abs(r*Math.pow(2,k2)-(1/factor))<eps) return true;
-      return false;
+     const eps=1e-6; const r=(a.ratio[0]/a.ratio[1])/(b.ratio[0]/b.ratio[1]); 
+     const k1=Math.round(Math.log2(factor/r)); if(Math.abs(r*Math.pow(2,k1)-factor)<eps) return true;
+     const k2=Math.round(Math.log2((1/factor)/r)); if(Math.abs(r*Math.pow(2,k2)-(1/factor))<eps) return true;
+     return false;
     }
     function normalizeIntervalRatio(n, d) {
         if (n === 0 || d === 0) return [0, 0];
@@ -641,6 +657,15 @@
         const newData = generateLatticeNodes(newMode, activeNodesToPreserve);
         nodes = newData.nodes;
         existingRatios = newData.existingRatios;
+        drawLattice();
+    });
+
+    document.getElementById('show-harmonics').addEventListener('change', (e) => {
+        showHarmonics = e.target.checked;
+        drawLattice();
+    });
+    document.getElementById('show-subharmonics').addEventListener('change', (e) => {
+        showSubharmonics = e.target.checked;
         drawLattice();
     });
 
