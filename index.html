@@ -47,22 +47,22 @@
     h2 { 
         font-size: 1.1em; 
         margin-top: 0; 
-        margin-bottom: 8px; /* Reduced */
+        margin-bottom: 6px; /* Compact */
         color: #1e601e; 
         font-weight: 700; 
     }
     button { 
         font-weight: 700; 
-        margin-top: 10px; /* Reduced */
+        margin-top: 8px; /* Compact */
     }
 
     /* FONT WEIGHT STYLES (LIGHT) */
-    #header p { margin: 5px 0 0 0; font-size: 0.9em; color: #555; font-weight: 300; }
-    .control-group p { font-weight: 300; font-size: 0.9em; margin: 5px 0 8px 0; }
+    #header p { margin: 5px 0 0 0; font-size: 0.87em; color: #555; font-weight: 300; } /* Compact */
+    .control-group p { font-weight: 300; font-size: 0.87em; margin: 4px 0 6px 0; } /* Compact */
     label { 
         display: block; 
-        margin-top: 8px; /* Reduced */
-        font-size: 0.9em; 
+        margin-top: 6px; /* Compact */
+        font-size: 0.87em; 
         font-weight: 300; 
         color: #444;
     }
@@ -72,7 +72,7 @@
     .checkbox-group {
         display: flex;
         flex-wrap: wrap; 
-        gap: 10px 15px; /* Reduced row gap */
+        gap: 8px 12px; /* Compact */
     }
     .checkbox-group label { 
         display: flex;
@@ -102,15 +102,15 @@
     }
 
     .control-group { 
-        margin-bottom: 15px; /* Reduced */
-        padding-bottom: 15px; /* Reduced */
+        margin-bottom: 12px; /* Compact */
+        padding-bottom: 12px; /* Compact */
         border-bottom: 1px solid #eee;
     }
     .control-group:last-child { border-bottom: none; padding-bottom: 0; }
     
     input[type="range"] { 
         width: 100%; 
-        margin: 5px 0; 
+        margin: 4px 0; /* Compact */
         -webkit-appearance: none; appearance: none;
         height: 4px; background: #ddd; border-radius: 2px;
     }
@@ -136,7 +136,7 @@
         display: flex;
         align-items: center;
     }
-    select#prime-limit-select, select#parent-limit-select {
+    select#prime-limit-select, select#parent-limit-select, #waveform {
         width: 100%;
         margin-top: 5px;
     }
@@ -164,24 +164,36 @@
 
     <div class="control-group">
         <h2>Sound Controls</h2>
-        <label for="waveform">Waveform:</label>
-        <select id="waveform">
-            <option value="sine" selected>Sine</option>
-            <option value="square">Square</option>
-            <option value="triangle">Triangle</option>
-            <option value="sawtooth">Sawtooth</option>
-        </select>
-        <label for="volume">Volume (Gain): <span id="volume-val">0.05</span></label>
-        <input type="range" id="volume" min="0" max="0.5" step="0.01" value="0.05">
-        <label for="attack">Attack: <span id="attack-val">0.50</span>s</label>
-        <input type="range" id="attack" min="0.01" max="2.0" step="0.01" value="0.50">
-        <label for="decay">Release: <span id="decay-val">1.00</span>s</label>
-        <input type="range" id="decay" min="0.01" max="4.0" step="0.01" value="1.00">
-        <label for="filter-freq">Low-Pass Cutoff (Hz): <span id="filter-freq-val">5000</span></label>
-        <input type="range" id="filter-freq" min="100" max="20000" step="10" value="5000">
-        <label for="filter-q">Resonance (Q): <span id="filter-q-val">1.0</span></label>
-        <input type="range" id="filter-q" min="0.1" max="10" step="0.1" value="1.0">
-        <button onclick="deactivateAll()">Stop All Sound</button>
+        <div id="top-sound-row" style="display: flex; gap: 15px; align-items: flex-end; margin-bottom: 6px;">
+            <div style="flex: 1.2;">
+                <label for="waveform" style="margin-top:0;">Waveform:</label>
+                <select id="waveform">
+                    <option value="sine" selected>Sine</option>
+                    <option value="square">Square</option>
+                    <option value="triangle">Triangle</option>
+                    <option value="sawtooth">Sawtooth</option>
+                </select>
+            </div>
+            <div style="flex: 1;">
+                <label for="volume" style="margin-top:0;">Gain: <span id="volume-val">0.05</span></label>
+                <input type="range" id="volume" min="0" max="0.5" step="0.01" value="0.05">
+            </div>
+        </div>
+        <div id="slider-grid" style="display: grid; grid-template-columns: 1fr 1fr; gap: 0 15px;">
+            <div>
+                <label for="attack">Attack: <span id="attack-val">0.50</span>s</label>
+                <input type="range" id="attack" min="0.01" max="2.0" step="0.01" value="0.50">
+                <label for="decay">Release: <span id="decay-val">1.00</span>s</label>
+                <input type="range" id="decay" min="0.01" max="4.0" step="0.01" value="1.00">
+            </div>
+            <div>
+                <label for="filter-freq">LPF Cutoff (Hz): <span id="filter-freq-val">5000</span></label>
+                <input type="range" id="filter-freq" min="100" max="20000" step="10" value="5000">
+                <label for="filter-q">Resonance (Q): <span id="filter-q-val">1.0</span></label>
+                <input type="range" id="filter-q" min="0.1" max="20" step="0.1" value="1.0">
+            </div>
+        </div>
+        <button onclick="deactivateAll()" style="width: 100%;">Stop All Sound</button>
     </div>
     
     <div class="control-group">
@@ -222,7 +234,7 @@
                 </select>
             </div>
             <div id="prime-filters-container">
-                <label class="grid-label">Individual Primes:</label>
+                <label class="grid-label" style="margin-top:0;">Individual Primes:</label>
                 <div id="prime-filters" class="prime-checkbox-grid">
                     <label><input type="checkbox" data-prime="3" checked> 3</label>
                     <label><input type="checkbox" data-prime="11"> 11</label>
@@ -237,21 +249,30 @@
                 </div>
             </div>
         </div>
-        <div class="checkbox-group" style="margin-top: 15px;">
-            <label><input type="checkbox" id="show-harmonics" checked> Show harmonics</label>
-            <label><input type="checkbox" id="show-subharmonics" checked> Show subharmonics</label>
+        <div class="checkbox-group" style="margin-top: 12px;">
+            <label><input type="checkbox" id="show-harmonics" checked> Harmonics</label>
+            <label><input type="checkbox" id="show-subharmonics" checked> Subharmonics</label>
         </div>
     </div>
 
     <div class="control-group">
         <h2>Locate Interval</h2>
-        <p>Find all pairs of visible nodes matching a pitch class interval.</p>
-        <div id="locate-interval-container" style="display: flex; align-items: center; gap: 5px; margin-top: 10px;">
-            <input type="text" id="interval-num1" placeholder="e.g. 3" size="5" style="text-align: center; font-weight: 300;">
-            <span style="font-weight: bold; color: #555;">:</span>
-            <input type="text" id="interval-num2" placeholder="e.g. 2" size="5" style="text-align: center; font-weight: 300;">
-            <button id="locate-interval-btn" style="margin-left: 10px; margin-top: 0;">Find</button>
-            <button id="clear-interval-btn" style="margin-top: 0;">Clear</button>
+        <p>Find pairs of nodes matching an interval. Use a preset or enter a ratio manually.</p>
+        <div id="locate-interval-container" style="display: flex; flex-direction: column; gap: 6px; margin-top: 5px;">
+            <label for="interval-select" style="margin-top:0; margin-bottom:-4px;">Presets:</label>
+            <select id="interval-select" style="width: 100%;"></select>
+            
+            <label for="interval-num1" style="margin-top:6px; margin-bottom:-4px;">Manual Ratio:</label>
+            <div id="manual-interval-inputs" style="display: flex; align-items: center; gap: 5px;">
+                <input type="text" id="interval-num1" placeholder="e.g. 3" style="text-align: center; font-weight: 300; width: 100%;">
+                <span style="font-weight: bold; color: #555;">:</span>
+                <input type="text" id="interval-num2" placeholder="e.g. 2" style="text-align: center; font-weight: 300; width: 100%;">
+            </div>
+            
+            <div style="display: flex; gap: 10px; margin-top: 2px;">
+                <button id="locate-interval-btn" style="flex: 1; margin-top: 0;">Find</button>
+                <button id="clear-interval-btn" style="flex: 1; margin-top: 0;">Clear</button>
+            </div>
         </div>
     </div>
 
@@ -379,6 +400,40 @@
         }
         return finalVectors;
     })();
+
+    const PRESET_INTERVALS = {
+        "Pythagorean/3-Limit": {
+            "Perfect 5ths (3:2) & 4ths (4:3)": "3/2",
+        },
+        "5-Limit (Ptolemaic)": {
+            "Major 3rds (5:4) & minor 6ths (8:5)": "5/4",
+            "Minor 3rds (6:5) & major 6ths (5:3)": "6/5",
+            "Major Limma (135:128)": "135/128",
+            "Just Chromatic Semitone (25:24)": "25/24",
+            "Greater Diesis (648:625)": "648/625",
+            "Lesser Diesis (128:125)": "128/125",
+        },
+        "7-Limit (Septimal)": {
+            "Harmonic Seventh (7:4)": "7/4",
+            "Septimal Tritone (7:5)": "7/5",
+            "Septimal Minor Third (7:6)": "7/6",
+            "Septimal Quartertone (36:35)": "36/35",
+        },
+        "11-Limit (Undecimal)": {
+            "Undecimal Tritone (11:8)": "11/8",
+            "Undecimal Supermajor Second (11:9)": "11/9",
+            "Undecimal Quartertone (33:32)": "33/32",
+        },
+        "Commas & Micro-intervals": {
+            "Septimal Diesis (49:48)": "49/48",
+            "Septimal Comma (64:63)": "64/63",
+            "Syntonic Comma (81:80)": "81/80",
+            "Diaschisma (2048:2025)": "2048/2025",
+            "Septimal Kleisma (225:224)": "225/224",
+            "Breedsma (2401:2400)": "2401/2400",
+            "Ragisma (4375:4374)": "4375/4374",
+        }
+    };
 
     /* 4. NODE GENERATION */
     let nodes;
@@ -592,6 +647,22 @@
     window.deactivateAll=function(){nodes.forEach(f=>deactivateAllOctaves(f));}
 
     /* --- EVENT HANDLERS --- */
+    function populateIntervalSelector() {
+        const select = document.getElementById('interval-select');
+        select.innerHTML = '<option value="">Select a preset...</option>';
+        for (const groupName in PRESET_INTERVALS) {
+            const optgroup = document.createElement('optgroup');
+            optgroup.label = groupName;
+            for (const intervalName in PRESET_INTERVALS[groupName]) {
+                const option = document.createElement('option');
+                option.textContent = intervalName;
+                option.value = PRESET_INTERVALS[groupName][intervalName];
+                optgroup.appendChild(option);
+            }
+            select.appendChild(optgroup);
+        }
+    }
+
     function resizeCanvas(){const c=document.getElementById('container');const dpr=window.devicePixelRatio||1;const r=c.getBoundingClientRect();canvas.width=r.width*dpr;canvas.height=r.height*dpr;canvas.style.width=`${r.width}px`;canvas.style.height=`${r.height}px`;drawLattice();}
     function getMouseWorldPos(e){const r=canvas.getBoundingClientRect();const mX=e.clientX-r.left;const mY=e.clientY-r.top;const wX=(mX-r.width/2-pan.x)/zoomLevel+centerX;const wY=(mY-r.height/2-pan.y)/zoomLevel+centerY;return{worldX:wX,worldY:wY};}
     
@@ -675,6 +746,23 @@
         drawLattice();
     });
 
+    document.getElementById('interval-select').addEventListener('change', (e) => {
+        const ratioString = e.target.value;
+        const num1Input = document.getElementById('interval-num1');
+        const num2Input = document.getElementById('interval-num2');
+        if (ratioString) {
+            const [numStr, denStr] = ratioString.split('/');
+            num1Input.value = numStr;
+            num2Input.value = denStr;
+        } else {
+            num1Input.value = '';
+            num2Input.value = '';
+        }
+    });
+
+    document.getElementById('interval-num1').addEventListener('input', () => { document.getElementById('interval-select').value = ''; });
+    document.getElementById('interval-num2').addEventListener('input', () => { document.getElementById('interval-select').value = ''; });
+
     document.getElementById('locate-interval-btn').addEventListener('click', () => {
         const num1 = parseInt(document.getElementById('interval-num1').value);
         const num2 = parseInt(document.getElementById('interval-num2').value);
@@ -709,6 +797,7 @@
 
     document.getElementById('clear-interval-btn').addEventListener('click', () => {
         highlightedIntervals = [];
+        document.getElementById('interval-select').value = '';
         document.getElementById('interval-num1').value = '';
         document.getElementById('interval-num2').value = '';
         drawLattice();
@@ -719,6 +808,7 @@
     const initialData = generateLatticeNodes(document.getElementById('parent-limit-select').value);
     nodes = initialData.nodes;
     existingRatios = initialData.existingRatios;
+    populateIntervalSelector();
     resizeCanvas();
 
   </script>
