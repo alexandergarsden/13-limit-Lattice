@@ -141,6 +141,29 @@
         margin-top: 5px;
     }
 
+    /* ------------------- ACCORDION FOR CONTROL PANEL ------------------- */
+    .control-group > h2 {
+        cursor: pointer;
+        user-select: none;
+        position: relative;
+        padding-right: 1.5em; /* Space for arrow */
+    }
+    .control-group > h2::after {
+        content: '▾';
+        position: absolute;
+        right: 0;
+        top: 50%;
+        transform: translateY(-50%);
+        font-size: 0.9em;
+        color: #888;
+    }
+    .control-group.collapsed > h2::after {
+        content: '▸';
+    }
+    .control-group.collapsed > .control-content {
+        display: none;
+    }
+
   </style>
 </head>
 <body>
@@ -158,120 +181,130 @@
     
     <div class="control-group">
         <h2>Lattice View</h2>
-        <label for="zoom-slider">Zoom Level: <span id="zoom-val">0.7</span>x</label>
-        <input type="range" id="zoom-slider" min="0.1" max="2.0" step="0.05" value="0.7">
+        <div class="control-content">
+            <label for="zoom-slider">Zoom Level: <span id="zoom-val">1.00</span>x</label>
+            <input type="range" id="zoom-slider" min="0.1" max="2.6" step="0.05" value="1.0">
+        </div>
     </div>
 
     <div class="control-group">
         <h2>Sound Controls</h2>
-        <div id="top-sound-row" style="display: flex; gap: 15px; align-items: flex-end; margin-bottom: 6px;">
-            <div style="flex: 1.2;">
-                <label for="waveform" style="margin-top:0;">Waveform:</label>
-                <select id="waveform">
-                    <option value="sine" selected>Sine</option>
-                    <option value="square">Square</option>
-                    <option value="triangle">Triangle</option>
-                    <option value="sawtooth">Sawtooth</option>
-                </select>
+        <div class="control-content">
+            <div id="top-sound-row" style="display: flex; gap: 15px; align-items: flex-end; margin-bottom: 6px;">
+                <div style="flex: 1.2;">
+                    <label for="waveform" style="margin-top:0;">Waveform:</label>
+                    <select id="waveform">
+                        <option value="sine" selected>Sine</option>
+                        <option value="square">Square</option>
+                        <option value="triangle">Triangle</option>
+                        <option value="sawtooth">Sawtooth</option>
+                    </select>
+                </div>
+                <div style="flex: 1;">
+                    <label for="volume" style="margin-top:0;">Gain: <span id="volume-val">0.05</span></label>
+                    <input type="range" id="volume" min="0" max="0.5" step="0.01" value="0.05">
+                </div>
             </div>
-            <div style="flex: 1;">
-                <label for="volume" style="margin-top:0;">Gain: <span id="volume-val">0.05</span></label>
-                <input type="range" id="volume" min="0" max="0.5" step="0.01" value="0.05">
+            <div id="slider-grid" style="display: grid; grid-template-columns: 1fr 1fr; gap: 0 15px;">
+                <div>
+                    <label for="attack">Attack: <span id="attack-val">0.50</span>s</label>
+                    <input type="range" id="attack" min="0.01" max="2.0" step="0.01" value="0.50">
+                    <label for="decay">Release: <span id="decay-val">1.00</span>s</label>
+                    <input type="range" id="decay" min="0.01" max="4.0" step="0.01" value="1.00">
+                </div>
+                <div>
+                    <label for="filter-freq">LPF (Hz): <span id="filter-freq-val">5000</span></label>
+                    <input type="range" id="filter-freq" min="100" max="20000" step="10" value="5000">
+                    <label for="filter-q">Resonance (Q): <span id="filter-q-val">1.0</span></label>
+                    <input type="range" id="filter-q" min="0.1" max="20" step="0.1" value="1.0">
+                </div>
             </div>
+            <button onclick="deactivateAll()" style="width: 100%;">Stop All Sound</button>
         </div>
-        <div id="slider-grid" style="display: grid; grid-template-columns: 1fr 1fr; gap: 0 15px;">
-            <div>
-                <label for="attack">Attack: <span id="attack-val">0.50</span>s</label>
-                <input type="range" id="attack" min="0.01" max="2.0" step="0.01" value="0.50">
-                <label for="decay">Release: <span id="decay-val">1.00</span>s</label>
-                <input type="range" id="decay" min="0.01" max="4.0" step="0.01" value="1.00">
-            </div>
-            <div>
-                <label for="filter-freq">LPF Cutoff (Hz): <span id="filter-freq-val">5000</span></label>
-                <input type="range" id="filter-freq" min="100" max="20000" step="10" value="5000">
-                <label for="filter-q">Resonance (Q): <span id="filter-q-val">1.0</span></label>
-                <input type="range" id="filter-q" min="0.1" max="20" step="0.1" value="1.0">
-            </div>
-        </div>
-        <button onclick="deactivateAll()" style="width: 100%;">Stop All Sound</button>
     </div>
     
     <div class="control-group">
         <h2>Pitch Display & Fundamental</h2>
-        <label>Pitch Display:</label>
-        <div class="checkbox-group">
-            <label><input type="radio" name="pitch-display" value="hz" id="display-hz" checked> Hz</label>
-            <label><input type="radio" name="pitch-display" value="pitch" id="display-pitch"> Pitch Name (+ Cents)</label>
+        <div class="control-content">
+            <label>Pitch Display:</label>
+            <div class="checkbox-group">
+                <label><input type="radio" name="pitch-display" value="hz" id="display-hz" checked> Hz</label>
+                <label><input type="radio" name="pitch-display" value="pitch" id="display-pitch"> Pitch Name (+ Cents)</label>
+            </div>
+            <label for="fundamental-input" id="fundamental-label">Fundamental (Hz):</label>
+            <input type="text" id="fundamental-input" value="440" onchange="setFundamental()">
+            <p>*Pitch example: A4 +0c</p>
         </div>
-        <label for="fundamental-input" id="fundamental-label">Fundamental (Hz):</label>
-        <input type="text" id="fundamental-input" value="440" onchange="setFundamental()">
-        <p>*Pitch example: A4 +0c</p>
     </div>
 
     <div class="control-group">
         <h2>Displayed Nodes</h2>
-        <div class="display-nodes-container">
-            <div>
-                <label for="prime-limit-select" style="margin-top:0;">Prime Limit:</label>
-                <select id="prime-limit-select">
-                    <option value="custom">Custom</option>
-                    <option value="3">3-limit</option>
-                    <option value="5">5-limit</option>
-                    <option value="7" selected>7-limit</option>
-                    <option value="11">11-limit</option>
-                    <option value="13">13-limit</option>
-                    <option value="17">17-limit</option>
-                    <option value="19">19-limit</option>
-                    <option value="23">23-limit</option>
-                    <option value="29">29-limit</option>
-                    <option value="31">31-limit</option>
-                </select>
+        <div class="control-content">
+            <div class="display-nodes-container">
+                <div>
+                    <label for="prime-limit-select" style="margin-top:0;">Prime Limit:</label>
+                    <select id="prime-limit-select">
+                        <option value="custom">Custom</option>
+                        <option value="3">3-limit</option>
+                        <option value="5">5-limit</option>
+                        <option value="7" selected>7-limit</option>
+                        <option value="11">11-limit</option>
+                        <option value="13">13-limit</option>
+                        <option value="17">17-limit</option>
+                        <option value="19">19-limit</option>
+                        <option value="23">23-limit</option>
+                        <option value="29">29-limit</option>
+                        <option value="31">31-limit</option>
+                    </select>
 
-                <label for="parent-limit-select">Generate primes >5 from:</label>
-                <select id="parent-limit-select">
-                    <option value="5-limit" selected>5-limit</option>
-                    <option value="all">Primes >5</option>
-                </select>
-            </div>
-            <div id="prime-filters-container">
-                <label class="grid-label" style="margin-top:0;">Individual Primes:</label>
-                <div id="prime-filters" class="prime-checkbox-grid">
-                    <label><input type="checkbox" data-prime="3" checked> 3</label>
-                    <label><input type="checkbox" data-prime="11"> 11</label>
-                    <label><input type="checkbox" data-prime="5" checked> 5</label>
-                    <label><input type="checkbox" data-prime="13"> 13</label>
-                    <label><input type="checkbox" data-prime="7" checked> 7</label>
-                    <label><input type="checkbox" data-prime="17"> 17</label>
-                    <label><input type="checkbox" data-prime="19"> 19</label>
-                    <label><input type="checkbox" data-prime="23"> 23</label>
-                    <label><input type="checkbox" data-prime="29"> 29</label>
-                    <label><input type="checkbox" data-prime="31"> 31</label>
+                    <label for="parent-limit-select">Generate primes >5 from:</label>
+                    <select id="parent-limit-select">
+                        <option value="5-limit" selected>5-limit</option>
+                        <option value="all">Primes >5</option>
+                    </select>
+                </div>
+                <div id="prime-filters-container">
+                    <label class="grid-label" style="margin-top:0;">Individual Primes:</label>
+                    <div id="prime-filters" class="prime-checkbox-grid">
+                        <label><input type="checkbox" data-prime="3" checked> 3</label>
+                        <label><input type="checkbox" data-prime="11"> 11</label>
+                        <label><input type="checkbox" data-prime="5" checked> 5</label>
+                        <label><input type="checkbox" data-prime="13"> 13</label>
+                        <label><input type="checkbox" data-prime="7" checked> 7</label>
+                        <label><input type="checkbox" data-prime="17"> 17</label>
+                        <label><input type="checkbox" data-prime="19"> 19</label>
+                        <label><input type="checkbox" data-prime="23"> 23</label>
+                        <label><input type="checkbox" data-prime="29"> 29</label>
+                        <label><input type="checkbox" data-prime="31"> 31</label>
+                    </div>
                 </div>
             </div>
-        </div>
-        <div class="checkbox-group" style="margin-top: 12px;">
-            <label><input type="checkbox" id="show-harmonics" checked> Harmonics</label>
-            <label><input type="checkbox" id="show-subharmonics" checked> Subharmonics</label>
+            <div class="checkbox-group" style="margin-top: 12px;">
+                <label><input type="checkbox" id="show-harmonics" checked> Harmonics</label>
+                <label><input type="checkbox" id="show-subharmonics" checked> Subharmonics</label>
+            </div>
         </div>
     </div>
 
     <div class="control-group">
         <h2>Locate Interval</h2>
-        <p>Find pairs of nodes matching an interval. Use a preset or enter a ratio manually.</p>
-        <div id="locate-interval-container" style="display: flex; flex-direction: column; gap: 6px; margin-top: 5px;">
-            <label for="interval-select" style="margin-top:0; margin-bottom:-4px;">Presets:</label>
-            <select id="interval-select" style="width: 100%;"></select>
-            
-            <label for="interval-num1" style="margin-top:6px; margin-bottom:-4px;">Manual Ratio:</label>
-            <div id="manual-interval-inputs" style="display: flex; align-items: center; gap: 5px;">
-                <input type="text" id="interval-num1" placeholder="e.g. 3" style="text-align: center; font-weight: 300; width: 100%;">
-                <span style="font-weight: bold; color: #555;">:</span>
-                <input type="text" id="interval-num2" placeholder="e.g. 2" style="text-align: center; font-weight: 300; width: 100%;">
-            </div>
-            
-            <div style="display: flex; gap: 10px; margin-top: 2px;">
-                <button id="locate-interval-btn" style="flex: 1; margin-top: 0;">Find</button>
-                <button id="clear-interval-btn" style="flex: 1; margin-top: 0;">Clear</button>
+        <div class="control-content">
+            <p>Find pairs of nodes matching an interval. Use a preset or enter a ratio manually.</p>
+            <div id="locate-interval-container" style="display: flex; flex-direction: column; gap: 6px; margin-top: 5px;">
+                <label for="interval-select" style="margin-top:0; margin-bottom:-4px;">Presets:</label>
+                <select id="interval-select" style="width: 100%;"></select>
+                
+                <label for="interval-num1" style="margin-top:6px; margin-bottom:-4px;">Manual Ratio:</label>
+                <div id="manual-interval-inputs" style="display: flex; align-items: center; gap: 5px;">
+                    <input type="text" id="interval-num1" placeholder="e.g. 3" style="text-align: center; font-weight: 300; width: 100%;">
+                    <span style="font-weight: bold; color: #555;">:</span>
+                    <input type="text" id="interval-num2" placeholder="e.g. 2" style="text-align: center; font-weight: 300; width: 100%;">
+                </div>
+                
+                <div style="display: flex; gap: 10px; margin-top: 2px;">
+                    <button id="locate-interval-btn" style="flex: 1; margin-top: 0;">Find</button>
+                    <button id="clear-interval-btn" style="flex: 1; margin-top: 0;">Clear</button>
+                </div>
             </div>
         </div>
     </div>
@@ -619,14 +652,22 @@
         }
     }
     
-    function toggleOctave(nD,oI){
-        if(!nD) return;
-        const octaveIndex = (oI === undefined) ? 2 : oI;
+    function toggleOctave(nD, oI, isMainNodeClick = false) {
+        if (!nD) return;
+        const octaveIndex = oI;
 
-        if(nD.octaveStates[octaveIndex] !== null) {
-            deactivateAllOctaves(nD);
+        if (nD.octaveStates[octaveIndex] !== null) {
+            // --- DEACTIVATION ---
+            if (isMainNodeClick) {
+                deactivateAllOctaves(nD);
+            } else {
+                deactivateOctave(nD, octaveIndex);
+                drawLattice(); 
+            }
             return;
         }
+        
+        // --- ACTIVATION ---
         const now = audioCtx.currentTime;
         const baseFreq = fundamental * (nD.ratio[0] / nD.ratio[1]);
         const targetFreq = baseFreq * OCTAVE_MULTIPLIERS[octaveIndex];
@@ -705,11 +746,11 @@
     });
 
     canvas.addEventListener('click',(e)=>{const{worldX,worldY}=getMouseWorldPos(e);const vN=nodes.filter(shouldNodeBeVisible);const nTC=[...vN].reverse();
-    for(const n of nTC){if(Math.pow(worldX-n.x,2)+Math.pow(worldY-n.y,2)<NODE_RADIUS*NODE_RADIUS){toggleOctave(n,2);return;}
-    for(let j=0;j<OCTAVE_MULTIPLIERS.length;j++){const sX=n.x+OCTAVE_SELECTOR_X_OFFSET;const sY=n.y-(2*OCTAVE_SELECTOR_Y_STEP)+(j*OCTAVE_SELECTOR_Y_STEP);if(Math.pow(worldX-sX,2)+Math.pow(worldY-sY,2)<(OCTAVE_SELECTOR_RADIUS+4)*(OCTAVE_SELECTOR_RADIUS+4)){toggleOctave(n,j);return;}}}});
+    for(const n of nTC){if(Math.pow(worldX-n.x,2)+Math.pow(worldY-n.y,2)<NODE_RADIUS*NODE_RADIUS){toggleOctave(n,2,true);return;}
+    for(let j=0;j<OCTAVE_MULTIPLIERS.length;j++){const sX=n.x+OCTAVE_SELECTOR_X_OFFSET;const sY=n.y-(2*OCTAVE_SELECTOR_Y_STEP)+(j*OCTAVE_SELECTOR_Y_STEP);if(Math.pow(worldX-sX,2)+Math.pow(worldY-sY,2)<(OCTAVE_SELECTOR_RADIUS+4)*(OCTAVE_SELECTOR_RADIUS+4)){toggleOctave(n,j,false);return;}}}});
     canvas.addEventListener('wheel',(e)=>{e.preventDefault();pan.x-=e.deltaX;pan.y-=e.deltaY;drawLattice();});
     
-    document.getElementById('zoom-slider').addEventListener('input',(e)=>{zoomLevel=parseFloat(e.target.value);document.getElementById('zoom-val').textContent=zoomLevel.toFixed(2);drawLattice();});
+    document.getElementById('zoom-slider').addEventListener('input',(e)=>{const dZ=parseFloat(e.target.value);zoomLevel=0.5*dZ+0.2;document.getElementById('zoom-val').textContent=dZ.toFixed(2);drawLattice();});
     document.getElementById('waveform').addEventListener('change',(e)=>{waveform=e.target.value;});
     document.getElementById('attack').addEventListener('input',(e)=>{attackTime=parseFloat(e.target.value);document.getElementById('attack-val').textContent=attackTime.toFixed(2);});
     document.getElementById('decay').addEventListener('input',(e)=>{releaseTime=parseFloat(e.target.value);document.getElementById('decay-val').textContent=releaseTime.toFixed(2);});
@@ -801,6 +842,13 @@
         document.getElementById('interval-num1').value = '';
         document.getElementById('interval-num2').value = '';
         drawLattice();
+    });
+    
+    /* --- UI Interactivity --- */
+    document.querySelectorAll('.control-group > h2').forEach(header => {
+        header.addEventListener('click', () => {
+            header.parentElement.classList.toggle('collapsed');
+        });
     });
 
     // Initial setup calls
