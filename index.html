@@ -360,6 +360,7 @@
     const spacing = 480; const centerX = WORLD_WIDTH / 2; const centerY = WORLD_HEIGHT / 2;
     const NODE_RADIUS = 20 * (2 / 3); const LABEL_Y_OFFSET = 25;
     const OCTAVE_MULTIPLIERS = [4, 2, 1, 0.5, 0.25];
+    const OCTAVE_MULTIPLIER_FRACS = [[4, 1], [2, 1], [1, 1], [1, 2], [1, 4]];
     const OCTAVE_SELECTOR_X_OFFSET = 24; const OCTAVE_SELECTOR_Y_STEP = 10 * (2 / 3); const OCTAVE_SELECTOR_RADIUS = 2;
     
     const P_VECTORS = (() => {
@@ -464,14 +465,19 @@
                     ctx.stroke();
 
                     if (hoveredOctave.node === n && hoveredOctave.octaveIndex === idx) {
+                        const [nodeNum, nodeDen] = n.ratio;
+                        const [multNum, multDen] = OCTAVE_MULTIPLIER_FRACS[idx];
+                        const [simpNum, simpDen] = simplifyFraction(nodeNum * multNum, nodeDen * multDen);
+                        const fracText = `${simpNum}/${simpDen}`;
+                        
                         let hoverText = '';
                         if (displayMode === 'hz') {
-                            const freq = fundamental * (n.ratio[0] / n.ratio[1]) * multiplier;
-                            hoverText = `${freq.toFixed(1)} Hz`;
+                            const freq = fundamental * (nodeNum / nodeDen) * multiplier;
+                            hoverText = `${fracText} (${freq.toFixed(1)} Hz)`;
                         } else {
-                            const labels = ['+2', '+1', '+0', '-1', '-2'];
-                            hoverText = labels[idx];
+                            hoverText = fracText;
                         }
+
                         ctx.fillStyle = '#555';
                         ctx.font = '8px "Helvetica Neue"';
                         ctx.textAlign = 'left';
